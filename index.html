@@ -340,7 +340,7 @@ tailwind.config = {
   <div id="tab-customers" class="content-area px-3 pt-3 hidden">
     <div class="relative mb-3">
       <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xl"></i>
-      <input class="inp pl-11" id="cust-search-inp" placeholder="பெயர் அல்லது எண் தேடுக..." oninput="renderCustomers()"/>
+      <input class="inp pl-11" id="cust-search-inp" placeholder="தமிழ் / English / எண் தேடுக..." oninput="renderCustomers()"/>
     </div>
     <div id="cust-list-wrap"></div>
   </div>
@@ -469,7 +469,8 @@ tailwind.config = {
     </button>
     <div id="new-cust-form" class="hidden mt-4 card p-4">
       <div class="slbl" style="margin-top:0">புதியவர் விவரம்</div>
-      <input class="inp mb-3" id="nc-name" placeholder="பெயர் (கட்டாயம்)"/>
+      <input class="inp mb-3" id="nc-name" placeholder="பெயர் - தமிழில் (கட்டாயம்)"/>
+      <input class="inp mb-3" id="nc-name-en" placeholder="Name in English (விரும்பினால்)"/>
       <input class="inp mb-3" id="nc-phone" type="tel" placeholder="கைபேசி எண் (விரும்பினால்)"/>
       <button onclick="createAndSelect()" class="btn btn-green w-full">
         <i class="ti ti-check text-xl"></i> சேர்த்து தொடர்
@@ -820,7 +821,7 @@ tailwind.config = {
     <div class="mx-auto mb-3 rounded-2xl overflow-hidden border-4 border-green-600" style="width:240px;height:240px;background:#fff;display:flex;align-items:center;justify-content:center">
       <img id="gpay-qr-img" src="" alt="GPay QR" style="width:230px;height:230px;object-fit:contain;display:block"/>
     </div>
-    <div class="text-xs text-gray-400 mb-1" id="gpay-upi-lbl">UPI: shunmugapriya2410@okicici</div>
+    <div class="text-xs text-gray-400 mb-1" id="gpay-upi-lbl">UPI ID அமைக்கவில்லை</div>
     <div class="font-black text-green-800 text-xl mb-4" id="gpay-shop-lbl">Nithisha Store</div>
     <button onclick="closeGpayQR()" class="btn btn-green w-full">
       <i class="ti ti-check text-xl"></i> கட்டினார் — சரி
@@ -836,8 +837,10 @@ tailwind.config = {
   <div class="modal-sheet">
     <div class="drag-handle"></div>
     <div class="font-black text-xl mb-4">வாடிக்கையாளர் திருத்து</div>
-    <label class="slbl mt-0">பெயர்</label>
+    <label class="slbl mt-0">பெயர் (தமிழில்)</label>
     <input class="inp mb-3" id="ec-name" placeholder="பெயர்"/>
+    <label class="slbl mt-0">Name in English</label>
+    <input class="inp mb-3" id="ec-name-en" placeholder="English name (optional)"/>
     <label class="slbl mt-0">கைபேசி எண்</label>
     <input class="inp mb-4" id="ec-phone" type="tel" placeholder="கைபேசி எண்"/>
     <button onclick="saveEditCustomer()" class="btn btn-green w-full mb-2">
@@ -991,13 +994,13 @@ const DB = {
     this.save();
   },
 
-  addCustomer(name, phone) {
-    const c = {id:uid(), name:name.trim(), phone:(phone||'').trim(), createdAt:Date.now()};
+  addCustomer(name, phone, nameEnglish) {
+    const c = {id:uid(), name:name.trim(), nameEnglish:(nameEnglish||'').trim(), phone:(phone||'').trim(), createdAt:Date.now()};
     this.customers.push(c); this.save(); return c;
   },
-  updateCustomer(id, name, phone) {
+  updateCustomer(id, name, phone, nameEnglish) {
     const c = this.customers.find(x=>x.id===id);
-    if (c) { c.name=name.trim(); c.phone=(phone||'').trim(); this.save(); }
+    if (c) { c.name=name.trim(); c.nameEnglish=(nameEnglish||'').trim(); c.phone=(phone||'').trim(); this.save(); }
   },
   deleteCustomer(id) {
     this.customers = this.customers.filter(c=>c.id!==id);
@@ -1097,7 +1100,7 @@ function saveSettings() {
   document.getElementById('topbar-shop-name').textContent = appSettings.shopName;
   document.getElementById('gpay-shop-lbl').textContent = appSettings.shopName;
   const upiEl = document.getElementById('gpay-upi-lbl');
-  if (upiEl) upiEl.textContent = appSettings.gpayId ? 'UPI: ' + appSettings.gpayId : 'UPI: shunmugapriya2410@okicici';
+  if (upiEl) upiEl.textContent = appSettings.gpayId ? 'UPI: ' + appSettings.gpayId : 'UPI ID அமைக்கவில்லை';
   showToast('அமைப்புகள் சேமிக்கப்பட்டன!');
 }
 
@@ -1250,7 +1253,7 @@ function doDeleteBillFromDash(billId) {
 // ══════════════════════════════════════════
 function renderCustomers() {
   const q = (document.getElementById('cust-search-inp')?.value||'').toLowerCase();
-  let list = DB.customers.filter(c=>!q||c.name.toLowerCase().includes(q)||c.phone.includes(q));
+  let list = DB.customers.filter(c=>!q||c.name.toLowerCase().includes(q)||(c.nameEnglish||'').toLowerCase().includes(q)||c.phone.includes(q));
   list.sort((a,b)=>a.name.localeCompare(b.name,'ta'));
   const el = document.getElementById('cust-list-wrap');
   if (!list.length) { el.innerHTML = emptyState('ti-users','வாடிக்கையாளர் இல்லை','புதிய பில் தொடங்கும்போது சேர்க்கப்படும்'); return; }
@@ -1260,7 +1263,7 @@ function renderCustomers() {
     return `<div class="row-item flex items-center gap-3 p-3 mb-2" onclick="openCustomer('${c.id}')">
       <div class="avatar">${c.name.slice(0,2)}</div>
       <div style="flex:1">
-        <div class="font-bold text-base">${c.name}</div>
+        <div class="font-bold text-base">${c.name}${c.nameEnglish?` <span style="font-size:12px;color:#6b7280;font-weight:600">(${c.nameEnglish})</span>`:''}</div>
         <div class="text-xs text-gray-400">${c.phone||'—'} · ${bills} பில்கள்</div>
       </div>
       <div class="flex items-center gap-2">
@@ -1285,13 +1288,15 @@ function deleteCustomerFromDetail() {
 function editCustomerPrompt() {
   const c = DB.customers.find(x=>x.id===currentCustId); if (!c) return;
   document.getElementById('ec-name').value = c.name;
+  document.getElementById('ec-name-en').value = c.nameEnglish||'';
   document.getElementById('ec-phone').value = c.phone||'';
   openModal('modal-edit-cust');
 }
 function saveEditCustomer() {
   const name = document.getElementById('ec-name').value.trim();
   if (!name) { showToast('பெயர் உள்ளிடவும்!', true); return; }
-  DB.updateCustomer(currentCustId, name, document.getElementById('ec-phone').value.trim());
+  const nameEn = (document.getElementById('ec-name-en')?.value||'').trim();
+  DB.updateCustomer(currentCustId, name, document.getElementById('ec-phone').value.trim(), nameEn);
   closeModal('modal-edit-cust'); renderCustomerDetail(currentCustId); showToast('திருத்தப்பட்டது');
 }
 
@@ -1437,7 +1442,7 @@ function renderKadan() {
 
   const list = DB.customers
     .map(c=>({c, k:DB.getCustKadan(c.id), bills: DB.getCustBills(c.id).filter(b=>!b.settled && b.kadan>0)}))
-    .filter(x=>x.k>0 && (!q || x.c.name.toLowerCase().includes(q) || (x.c.phone||'').includes(q)))
+    .filter(x=>x.k>0 && (!q || x.c.name.toLowerCase().includes(q) || (x.c.nameEnglish||'').toLowerCase().includes(q) || (x.c.phone||'').includes(q)))
     .sort((a,b)=>b.k-a.k);
 
   if (!list.length) { el.innerHTML = emptyState('ti-mood-smile','கடன் இல்லை!','அனைத்து கட்டணமும் பெற்றோம்'); return; }
@@ -1706,7 +1711,7 @@ function showBillGpayQR() {
   const total = billCart.reduce((s,i)=>s+i.lineTotal,0);
   const paid = parseFloat(document.getElementById('pay-inp').value)||total;
   document.getElementById('gpay-amount-lbl').textContent = 'தொகை: ' + rupee(paid);
-  document.getElementById('gpay-upi-lbl').textContent = appSettings.gpayId ? 'UPI: '+appSettings.gpayId : 'UPI: shunmugapriya2410@okicici';
+  document.getElementById('gpay-upi-lbl').textContent = appSettings.gpayId ? 'UPI: '+appSettings.gpayId : 'UPI ID அமைக்கவில்லை';
   document.getElementById('gpay-shop-lbl').textContent = appSettings.shopName||'Nithisha Store';
   const qrImg = document.getElementById('gpay-qr-img');
   if (qrImg) qrImg.src = GPAY_QR_DATA_URI;
@@ -1725,7 +1730,7 @@ function onKadanAmtChange() {
 function showKadanGpayQR() {
   const amt = parseFloat(document.getElementById('pk-amount').value)||0;
   document.getElementById('gpay-amount-lbl').textContent = 'தொகை: ' + rupee(amt);
-  document.getElementById('gpay-upi-lbl').textContent = appSettings.gpayId ? 'UPI: '+appSettings.gpayId : 'UPI: shunmugapriya2410@okicici';
+  document.getElementById('gpay-upi-lbl').textContent = appSettings.gpayId ? 'UPI: '+appSettings.gpayId : 'UPI ID அமைக்கவில்லை';
   document.getElementById('gpay-shop-lbl').textContent = appSettings.shopName||'Nithisha Store';
   const qrImg = document.getElementById('gpay-qr-img');
   if (qrImg) qrImg.src = GPAY_QR_DATA_URI;
@@ -1759,6 +1764,8 @@ function openPayKadanModal(custId) {
 function confirmPayKadan() {
   const amt = parseFloat(document.getElementById('pk-amount').value)||0;
   if (!amt||amt<=0) { showToast('தொகை உள்ளிடவும்!', true); return; }
+  const totalOwed = DB.getCustKadan(currentCustId);
+  if (amt > totalOwed) { showToast('கடனை விட அதிகமாக உள்ளிட்டீர்கள்! கடன்: '+rupee(Math.round(totalOwed)), true); return; }
   DB.payKadan(currentCustId, amt, kadanPayMethod);
   closeModal('modal-pay-kadan');
   renderDashboard(); renderCustomers(); renderKadan();
@@ -1808,7 +1815,7 @@ function renderAnalytics(period) {
   const {start, end} = getDateRange(period);
   const bills = DB.bills.filter(b=>b.date>=start && b.date<=end);
   if (!bills.length) { el.innerHTML = emptyState('ti-chart-bar','தரவு இல்லை','இந்த காலகட்டத்தில் பில் இல்லை'); return; }
-  const totalRev = bills.reduce((s,b)=>s+b.totalAmt,0);
+  const totalRev = bills.reduce((s,b)=>s+b.paidAmt,0);
   const cashRev = bills.filter(b=>b.payMethod!=='gpay').reduce((s,b)=>s+b.paidAmt,0);
   const gpayRev = bills.filter(b=>b.payMethod==='gpay').reduce((s,b)=>s+b.paidAmt,0);
   const kadanPayInPeriod = DB.kadanPayments.filter(k=>k.date>=start&&k.date<=end);
@@ -1892,11 +1899,12 @@ function renderAnalytics(period) {
 
   const periodLabel = period==='week'?'கடந்த 7 நாட்கள்':period==='month'?'இந்த மாதம்':period==='year'?'இந்த ஆண்டு':'தேர்ந்த காலம்';
 
+  const totalBilled = bills.reduce((s,b)=>s+b.totalAmt,0);
   let html = '<div class="grid grid-cols-2 gap-3 mb-4">'
     +'<div class="stat-card" style="grid-column:span 2;background:linear-gradient(135deg,#ecfdf5,#d1fae5);border-color:#6ee7b7">'
-    +'<div style="display:block;color:#059669;font-size:11px;font-weight:800;margin-bottom:4px">மொத்த வருவாய்</div>'
+    +'<div style="display:block;color:#059669;font-size:11px;font-weight:800;margin-bottom:4px">மொத்த வசூல் (கடன் நீங்கலாக)</div>'
     +'<div style="display:block;font-size:2rem;font-weight:900;color:#065f46;line-height:1.1">'+rupee(Math.round(totalRev))+'</div></div>'
-    +'<div class="stat-card"><div style="display:block;color:#16a34a;font-size:11px;font-weight:800;margin-bottom:4px">மொத்த விற்பனை</div><div style="display:block;font-size:1.5rem;font-weight:900;color:#166534">'+rupee(Math.round(totalRev))+'</div></div>'
+    +'<div class="stat-card"><div style="display:block;color:#16a34a;font-size:11px;font-weight:800;margin-bottom:4px">மொத்த பில் தொகை</div><div style="display:block;font-size:1.5rem;font-weight:900;color:#166534">'+rupee(Math.round(totalBilled))+'</div></div>'
     +'<div class="stat-card"><div style="display:block;color:#16a34a;font-size:11px;font-weight:800;margin-bottom:4px">மொத்த பில்கள்</div><div style="display:block;font-size:1.5rem;font-weight:900;color:#166534">'+bills.length+'</div></div>'
     +'<div class="stat-card" style="background:linear-gradient(135deg,#fff1f2,#ffe4e6);border-color:#fda4af"><div style="display:block;color:#f43f5e;font-size:11px;font-weight:800;margin-bottom:4px">நிலுவை கடன்</div><div style="display:block;font-size:1.5rem;font-weight:900;color:#be123c">'+rupee(Math.round(totalKadanNow))+'</div></div>'
     +'<div class="stat-card" style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border-color:#fcd34d"><div style="display:block;color:#d97706;font-size:11px;font-weight:800;margin-bottom:4px">இக்காலத்தில் கட்டியது</div><div style="display:block;font-size:1.5rem;font-weight:900;color:#b45309">'+rupee(Math.round(kadanPaid))+'</div></div>'
@@ -1971,7 +1979,7 @@ function onBillCustSearch() {
   const q = document.getElementById('bc-search').value.trim().toLowerCase();
   const el = document.getElementById('bc-suggest');
   if (!q) { el.innerHTML=''; return; }
-  const m = DB.customers.filter(c=>c.name.toLowerCase().includes(q)||c.phone.includes(q)).slice(0,7);
+  const m = DB.customers.filter(c=>c.name.toLowerCase().includes(q)||(c.nameEnglish||'').toLowerCase().includes(q)||c.phone.includes(q)).slice(0,7);
   if (!m.length) { el.innerHTML=''; return; }
   el.innerHTML = `<div class="bg-white border-2 border-green-600 rounded-xl overflow-hidden mb-3">${m.map(c=>{
     const k=DB.getCustKadan(c.id);
@@ -1987,7 +1995,8 @@ function showNewCustForm() { document.getElementById('new-cust-form').classList.
 function createAndSelect() {
   const name = document.getElementById('nc-name').value.trim();
   if (!name) { showToast('பெயர் உள்ளிடவும்!', true); return; }
-  const c = DB.addCustomer(name, document.getElementById('nc-phone').value.trim());
+  const nameEn = (document.getElementById('nc-name-en')?.value||'').trim();
+  const c = DB.addCustomer(name, document.getElementById('nc-phone').value.trim(), nameEn);
   selectBillCustomer(c.id, c.name);
 }
 function selectBillCustomer(id, name) {
@@ -2292,7 +2301,9 @@ function saveBill() {
   }));
   const bill=DB.addBill(billCustId,items,total,paid,billPayMethod,dueDate);
   currentCustId=billCustId;
-  showToast('பில் சேமிக்கப்பட்டது!');
+  const change = (parseFloat(paidStr)||0) - total;
+  if (change > 0) showToast('பில் சேமிக்கப்பட்டது! திரும்ப கொடு: '+rupee(Math.round(change)));
+  else showToast('பில் சேமிக்கப்பட்டது!');
   openBillDetail(bill.id,'customer');
 }
 
@@ -2313,12 +2324,12 @@ function exportExcel() {
   });
   const ws1=XLSX.utils.aoa_to_sheet(billData);setColWidths(ws1,[8,12,8,18,14,40,14,14,12,12,14]);
   XLSX.utils.book_append_sheet(wb,ws1,'பில்கள்');
-  const custData=[['பெயர்','தொலைபேசி','மொத்த பில்கள்','மொத்த வாங்கியது (₹)','சேர்ந்த தேதி','கடன் நிலுவை (₹)']];
+  const custData=[['பெயர் (தமிழ்)','Name (English)','தொலைபேசி','மொத்த பில்கள்','மொத்த வாங்கியது (₹)','சேர்ந்த தேதி','கடன் நிலுவை (₹)']];
   DB.customers.forEach(c=>{
     const bills=DB.getCustBills(c.id);
-    custData.push([c.name,c.phone||'',bills.length,Math.round(bills.reduce((s,b)=>s+b.totalAmt,0)),fmtDate(c.createdAt||Date.now()),Math.round(DB.getCustKadan(c.id))]);
+    custData.push([c.name,c.nameEnglish||'',c.phone||'',bills.length,Math.round(bills.reduce((s,b)=>s+b.totalAmt,0)),fmtDate(c.createdAt||Date.now()),Math.round(DB.getCustKadan(c.id))]);
   });
-  const ws2=XLSX.utils.aoa_to_sheet(custData);setColWidths(ws2,[18,14,14,20,12,16]);
+  const ws2=XLSX.utils.aoa_to_sheet(custData);setColWidths(ws2,[18,18,14,14,20,12,16]);
   XLSX.utils.book_append_sheet(wb,ws2,'வாடிக்கையாளர்கள்');
   const kadanData=[['தேதி','நேரம்','வாடிக்கையாளர்','கட்டிய தொகை (₹)','மீதம் கடன் (₹)','பில் எண்','கட்டண முறை','நிகழ்வு']];
   DB.kadanPayments.slice().sort((a,b)=>b.date-a.date).forEach(kp=>{
@@ -2374,7 +2385,7 @@ let pwaInstallPrompt = null;
     name: 'Nithisha Store',
     short_name: 'NithishaStore',
     description: 'கடை நிர்வாக ஆப்',
-    start_url: window.location.href,
+    start_url: './',
     display: 'standalone',
     background_color: '#f0fdf4',
     theme_color: '#15803d',
