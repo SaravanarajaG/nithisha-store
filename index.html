@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-title" content="Nithisha Store"/>
 <meta name="theme-color" content="#15803d"/>
 <link rel="manifest" id="pwa-manifest"/>
+<link rel="icon" id="pwa-favicon"/>
+<link rel="apple-touch-icon" id="pwa-apple-icon"/>
 <title>Nithisha Store</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
@@ -146,7 +148,11 @@ tailwind.config = {
   .avatar{width:44px;height:44px;border-radius:50%;background:#dcfce7;display:flex;
     align-items:center;justify-content:center;font-size:14px;font-weight:800;
     color:#166534;flex-shrink:0}
-  
+  .row-mid{flex:1;min-width:0}
+  .row-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+  .row-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+  .row-side{flex-shrink:0;display:flex;align-items:center;gap:8px}
+
   /* ── FAB ── */
   .fab{position:fixed;bottom:calc(72px + var(--safe-bottom) + 14px);right:16px;
     background:var(--brand);color:white;border:none;width:60px;height:60px;
@@ -255,9 +261,12 @@ tailwind.config = {
   .calc-zero{grid-column:span 2}
   .calc-history-row{background:white;border-radius:12px;border:1px solid #e5e7eb;
     padding:10px 14px;margin-bottom:7px;display:flex;justify-content:space-between;
-    align-items:center;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-  .calc-history-expr{font-size:13px;color:#6b7280;font-weight:600}
-  .calc-history-res{font-size:16px;font-weight:900;color:#166534}
+    align-items:center;gap:10px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+  .calc-history-info{flex:1;min-width:0}
+  .calc-history-expr{font-size:13px;color:#6b7280;font-weight:600;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .calc-history-res{font-size:16px;font-weight:900;color:#166534;flex-shrink:0;
+    white-space:nowrap;text-align:right}
 
   /* ── PRINT ── */
   @media print{
@@ -292,9 +301,14 @@ tailwind.config = {
 <!-- HOME SCREEN -->
 <div id="screen-home" class="screen active">
   <div class="topbar">
-    <div style="flex:1">
-      <div class="font-black text-xl leading-tight" id="topbar-shop-name">Nithisha Store</div>
-      <div class="text-green-200 text-xs mt-0.5" id="home-date-lbl"></div>
+    <div class="flex items-center gap-2.5" style="flex:1;min-width:0">
+      <div class="flex items-center justify-center flex-shrink-0" style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.18)">
+        <span style="font-family:Georgia,'Times New Roman',serif;font-weight:900;color:white;font-size:19px;line-height:1">N</span>
+      </div>
+      <div style="min-width:0">
+        <div class="font-black text-xl leading-tight row-title" id="topbar-shop-name">Nithisha Store</div>
+        <div class="text-green-200 text-xs mt-0.5 row-sub" id="home-date-lbl"></div>
+      </div>
     </div>
     <button onclick="exportExcel()" class="flex items-center gap-1.5 bg-white/20 text-white px-3 py-2 rounded-xl text-sm font-bold active:bg-white/30" style="min-height:40px">
       <i class="ti ti-file-spreadsheet text-base"></i> Excel
@@ -968,6 +982,21 @@ const DB = {
       if (!p.image) p.image = null;
     });
     if (!this.products.length) this.seedProducts();
+    this.migrateCatalogV2();
+  },
+
+  // One-time merge: adds any new catalog items (by Tamil name) that aren't
+  // already in the user's product list. Never touches or removes existing
+  // products, so any custom items/edits/prices the shop owner made are kept.
+  migrateCatalogV2() {
+    if (localStorage.getItem('ns_catalog_v2') === '1') return;
+    const existingNames = new Set(this.products.map(p => p.nameTamil.trim()));
+    const toAdd = this.defaultCatalog().filter(p => !existingNames.has(p.nameTamil.trim()));
+    if (toAdd.length) {
+      this.products = this.products.concat(toAdd);
+      this.save();
+    }
+    localStorage.setItem('ns_catalog_v2', '1');
   },
 
   save() {
@@ -978,20 +1007,138 @@ const DB = {
   },
 
   seedProducts() {
-    this.products = [
-      {id:uid(),nameTamil:'அரிசி',            nameEnglish:'Rice',         price:70,  unit:'கிலோ',    isFavourite:true,  image:null},
-      {id:uid(),nameTamil:'சர்க்கரை',         nameEnglish:'Sugar',        price:50,  unit:'கிலோ',    isFavourite:true,  image:null},
-      {id:uid(),nameTamil:'தேங்காய் எண்ணெய்', nameEnglish:'Coconut Oil',  price:180, unit:'லிட்டர்', isFavourite:false, image:null},
-      {id:uid(),nameTamil:'பருப்பு',          nameEnglish:'Dal',          price:110, unit:'கிலோ',    isFavourite:false, image:null},
-      {id:uid(),nameTamil:'உப்பு',            nameEnglish:'Salt',         price:20,  unit:'கிலோ',    isFavourite:false, image:null},
-      {id:uid(),nameTamil:'மிளகாய்',          nameEnglish:'Chilli',       price:90,  unit:'கிலோ',    isFavourite:false, image:null},
-      {id:uid(),nameTamil:'தக்காளி',          nameEnglish:'Tomato',       price:30,  unit:'கிலோ',    isFavourite:false, image:null},
-      {id:uid(),nameTamil:'வெங்காயம்',        nameEnglish:'Onion',        price:40,  unit:'கிலோ',    isFavourite:true,  image:null},
-      {id:uid(),nameTamil:'தேநீர் தூள்',      nameEnglish:'Tea Powder',   price:120, unit:'100கி',   isFavourite:false, image:null},
-      {id:uid(),nameTamil:'சோப்பு',           nameEnglish:'Soap',         price:35,  unit:'பீஸ்',    isFavourite:false, image:null},
-      {id:uid(),nameTamil:'பிஸ்கட்',          nameEnglish:'Biscuit',      price:5,   unit:'தொகை',   isFavourite:false, image:null},
-    ];
+    this.products = this.defaultCatalog();
     this.save();
+  },
+
+  defaultCatalog() {
+    return [
+      // ── பருப்பு வகைகள் & தானியங்கள் ──
+      {id:uid(),nameTamil:'அரிசி',                          nameEnglish:'Rice',                              price:70,  unit:'கிலோ',    isFavourite:true,  image:null},
+      {id:uid(),nameTamil:'சர்க்கரை',                       nameEnglish:'Sugar',                             price:5,   unit:'100கி',   isFavourite:true,  image:null},
+      {id:uid(),nameTamil:'உப்பு',                          nameEnglish:'Salt',                              price:20,  unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'தூவரம் பருப்பு',                 nameEnglish:'Toor Dal',                          price:110, unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'பாசிப் பருப்பு',                 nameEnglish:'Moong Dal',                         price:120, unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'கடலைப் பருப்பு',                 nameEnglish:'Chana Dal',                         price:90,  unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'உளுந்து',                        nameEnglish:'Urad Dal',                          price:130, unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'தேங்காய் எண்ணெய்',               nameEnglish:'Coconut Oil',                       price:180, unit:'லிட்டர்', isFavourite:false, image:null},
+      {id:uid(),nameTamil:'கடலை/சூரியகாந்தி எண்ணெய்',       nameEnglish:'Groundnut / Sunflower Oil',         price:160, unit:'லிட்டர்', isFavourite:false, image:null},
+      {id:uid(),nameTamil:'நெய்',                           nameEnglish:'Ghee',                              price:450, unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'மிளகாய் தூள்',                   nameEnglish:'Chilli Powder',                     price:90,  unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'மஞ்சள் தூள்',                    nameEnglish:'Turmeric Powder',                   price:60,  unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'கொத்தமல்லி தூள்',                nameEnglish:'Coriander Powder',                  price:70,  unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'புளி',                           nameEnglish:'Tamarind',                          price:60,  unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'வெல்லம்',                        nameEnglish:'Jaggery',                           price:50,  unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'மக்காச்சோளம் (பாப்கார்ன்)',      nameEnglish:'Popcorn Corn',                      price:90,  unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'தேநீர் தூள்',                    nameEnglish:'Tea Powder',                        price:120, unit:'100கி',   isFavourite:false, image:null},
+      {id:uid(),nameTamil:'காபி தூள்',                      nameEnglish:'Coffee Powder',                     price:140, unit:'100கி',   isFavourite:false, image:null},
+      {id:uid(),nameTamil:'மாவு (மைதா)',                    nameEnglish:'Masa / Maida Flour',                price:35,  unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'சப்பாத்தி மாவு',                 nameEnglish:'Chapathi Maavu (Wheat Flour)',      price:35,  unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'ரவை',                            nameEnglish:'Rava (Semolina)',                   price:18,  unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'சேமியா',                         nameEnglish:'Semiya (Vermicelli)',               price:18,  unit:'கிலோ',    isFavourite:false, image:null},
+
+      // ── காய்கறிகள் ──
+      {id:uid(),nameTamil:'தக்காளி',                        nameEnglish:'Tomato',                            price:30,  unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'வெங்காயம்',                      nameEnglish:'Onion',                             price:40,  unit:'கிலோ',    isFavourite:true,  image:null},
+      {id:uid(),nameTamil:'சின்ன வெங்காயம்',                nameEnglish:'Small Onion (Shallot)',             price:60,  unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'பச்சை மிளகாய்',                  nameEnglish:'Green Chilli',                      price:50,  unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'பூண்டு',                         nameEnglish:'Garlic',                            price:100, unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'கத்தரிக்காய்',                   nameEnglish:'Brinjal',                           price:30,  unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'புதினா / கருவேப்பிலை கட்டு',     nameEnglish:'Mint / Curry Leaves Bunch',         price:5,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'காய்ந்த மிளகாய்',                nameEnglish:'Dry Red Chilli',                    price:150, unit:'கிலோ',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'இஞ்சி',                          nameEnglish:'Ginger',                            price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+
+      // ── முட்டை & பால் பொருட்கள் ──
+      {id:uid(),nameTamil:'முட்டை',                         nameEnglish:'Egg',                               price:6,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'பால் பாக்கெட் (500மி.லி)',       nameEnglish:'Milk Packet (500ml)',               price:25,  unit:'பீஸ்',    isFavourite:false, image:null},
+
+      // ── பிஸ்கட் ──
+      {id:uid(),nameTamil:'மேரி கோல்ட் பிஸ்கட்',            nameEnglish:'Marie Gold Biscuit',                price:5,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'மில்க் பிஸ்கட்',                 nameEnglish:'Milk Bikis Biscuit',                price:5,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'ஹேப்பி ஹேப்பி பிஸ்கட்',          nameEnglish:'Happy Happy Biscuit',               price:5,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'யூனிபிக் பிஸ்கட்',               nameEnglish:'Unibic Biscuit',                    price:5,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'பார்லே-ஜி பிஸ்கட்',              nameEnglish:'Parle-G Biscuit',                   price:5,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'குட்-டே பிஸ்கட்',                nameEnglish:'Good Day Biscuit',                  price:5,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'டைகர் பிஸ்கட்',                  nameEnglish:'Tiger Biscuit',                     price:5,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'ஃபிஃப்டி-ஃபிஃப்டி பிஸ்கட்',     nameEnglish:'50-50 Biscuit',                     price:5,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'போர்பன் பிஸ்கட்',                nameEnglish:'Bourbon Biscuit',                   price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'ஹைட் & சீக் பிஸ்கட்',            nameEnglish:'Hide & Seek Biscuit',               price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'நைஸ் பிஸ்கட்',                   nameEnglish:'Nice Biscuit',                      price:5,   unit:'பீஸ்',    isFavourite:false, image:null},
+
+      // ── சிற்றுண்டி & நொறுக்குத் தீனிகள் ──
+      {id:uid(),nameTamil:'மிக்சர்',                        nameEnglish:'Mixture',                           price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'வாழைக்காய் சிப்ஸ்',              nameEnglish:'Banana Chips',                      price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'முறுக்கு',                       nameEnglish:'Murukku',                           price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'கார சேவ்',                       nameEnglish:'Kara Sev',                          price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'உருளைக்கிழங்கு சிப்ஸ்',          nameEnglish:'Potato Chips',                      price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'சாக்லேட் ரோல்',                  nameEnglish:'Choco Roll',                        price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'ஸ்பைடர்மேன் சிப்ஸ் / மிட்டாய்',  nameEnglish:'Spiderman Snack Pack',              price:5,   unit:'பீஸ்',    isFavourite:false, image:null},
+
+      // ── மசாலா & உணவு கலவைகள் ──
+      {id:uid(),nameTamil:'ஆச்சி சாம்பார் மசாலா',           nameEnglish:'Aachi Sambar Masala',               price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'சக்தி மசாலா',                    nameEnglish:'Sakthi Masala',                     price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'எம்.டி.ஆர். இன்ஸ்டன்ட் மிக்ஸ்',  nameEnglish:'MTR Instant Mix',                   price:35,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'நெய் மேஜிக்',                    nameEnglish:'Ghee Magic',                        price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'மேக்கி நூடுல்ஸ்',                nameEnglish:'Maggi Noodles',                     price:14,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'டாப் ராமன் நூடுல்ஸ்',            nameEnglish:'Top Ramen Noodles',                 price:14,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'நார் சூப்',                      nameEnglish:'Knorr Soup',                        price:20,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'3-இன்-1 காபி பிரீமிக்ஸ்',        nameEnglish:'3-in-1 Coffee Premix',              price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'மகாராஜா சாம்பார் பொடி',          nameEnglish:'Maharaja Sambar Podi',              price:4,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'மகாராஜா குழம்பு பொடி',           nameEnglish:'Maharaja Kulambu Podi',             price:20,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'மகாராஜா சிக்கன் பொரிச்சகறி பொடி',nameEnglish:'Maharaja Chicken Porichukari Podi', price:6,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'ஆச்சி சிக்கன் மசாலா',            nameEnglish:'Aachi Chicken Masala',              price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'ஆச்சி மட்டன் மசாலா',             nameEnglish:'Aachi Mutton Masala',               price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'ஆச்சி பிரியாணி பொடி',            nameEnglish:'Aachi Briyani Podi',                price:12,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'ரசம் பொடி',                      nameEnglish:'Rasam Podi',                        price:6,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'ஸ்பிரிட் (சுவை எசன்ஸ்)',         nameEnglish:'Spirit (Flavour Essence)',          price:35,  unit:'பீஸ்',    isFavourite:false, image:null},
+
+      // ── குளிர்பானம் / ஐஸ் காண்டி ──
+      {id:uid(),nameTamil:'கூல் டிரிங்க் - பிளாக்',         nameEnglish:'Cool Drink - Black',                price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'கூல் டிரிங்க் - ஆரஞ்சு',         nameEnglish:'Cool Drink - Orange',               price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'கூல் டிரிங்க் - பச்சை',          nameEnglish:'Cool Drink - Green',                price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'கூல் டிரிங்க் - வெள்ளை',         nameEnglish:'Cool Drink - White',                price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'கூல் டிரிங்க் - மாம்பழம்',       nameEnglish:'Cool Drink - Mango',                price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'கூல் டிரிங்க் - ஆப்பிள்',        nameEnglish:'Cool Drink - Apple',                price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+
+      // ── தலை முடி பராமரிப்பு ──
+      {id:uid(),nameTamil:'சிக் ஷாம்பு சாஷே',               nameEnglish:'Chik Shampoo Sachet',               price:1,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'சன்சில்க் ஷாம்பு சாஷே',          nameEnglish:'Sunsilk Shampoo Sachet',            price:1,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'கிளினிக் பிளஸ் ஷாம்பு சாஷே',    nameEnglish:'Clinic Plus Shampoo Sachet',        price:1,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'டவ் ஷாம்பு சாஷே',                nameEnglish:'Dove Shampoo Sachet',               price:2,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'பாராசூட் தலை எண்ணெய் சாஷே',     nameEnglish:'Parachute Hair Oil Sachet',         price:1,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'நைல் தலை எண்ணெய்',               nameEnglish:'Nyle Hair Oil',                     price:2,   unit:'பீஸ்',    isFavourite:false, image:null},
+
+      // ── சோப்புகள் ──
+      {id:uid(),nameTamil:'மைசூர் சாண்டல் சோப்பு',          nameEnglish:'Mysore Sandal Soap',                price:35,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'பியர்ஸ் சோப்பு',                 nameEnglish:'Pears Soap',                        price:40,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'டவ் சோப்பு',                     nameEnglish:'Dove Soap',                         price:45,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'சின்தோல் சோப்பு',                nameEnglish:'Cinthol Soap',                      price:35,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'லக்ஸ் சோப்பு',                   nameEnglish:'Lux Soap',                          price:30,  unit:'பீஸ்',    isFavourite:false, image:null},
+
+      // ── தனிநபர் பராமரிப்பு ──
+      {id:uid(),nameTamil:'யார்ட்லி பவுடர்',                nameEnglish:'Yardley Talcum Powder',             price:110, unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'பாண்ட்ஸ் பவுடர்',                nameEnglish:'Ponds Talcum Powder',               price:80,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'நைசில் பவுடர்',                  nameEnglish:'Nycil Powder',                      price:90,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'க்ளோஸ்அப் பேஸ்ட்',               nameEnglish:'Closeup Toothpaste',                price:45,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'கோல்கேட் பேஸ்ட்',                nameEnglish:'Colgate Toothpaste',                price:50,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'ரெட் டூத் பவுடர்',               nameEnglish:'Red Tooth Powder',                  price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'ரியோ நாப்கின்',                  nameEnglish:'RIO Sanitary Pads',                 price:30,  unit:'பீஸ்',    isFavourite:false, image:null},
+
+      // ── சுத்தம் செய்யும் பொருட்கள் ──
+      {id:uid(),nameTamil:'சவர்க்காரம் (துணி சோப்பு)',      nameEnglish:'Detergent Bar',                     price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'தேங்காய் ஃபைபர் தூரிகை',         nameEnglish:'Coconut Fiber Brush',               price:25,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'துணி சோப்பு (சிறியது)',          nameEnglish:'Thuni Soap (Small)',                price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'துணி சோப்பு (பெரியது)',          nameEnglish:'Thuni Soap (Large)',                price:20,  unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'துணி பவுடர் (சிறியது)',          nameEnglish:'Thuni Powder (Small)',              price:5,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'துணி பவுடர் (பெரியது)',          nameEnglish:'Thuni Powder (Large)',              price:10,  unit:'பீஸ்',    isFavourite:false, image:null},
+
+      // ── மிட்டாய் & சாக்லேட் ──
+      {id:uid(),nameTamil:'மஞ்ச் சாக்லேட்',                 nameEnglish:'Munch Chocolate',                   price:5,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'எக்லேர்ஸ்',                      nameEnglish:'Eclairs',                           price:1,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'லாலிபாப்',                       nameEnglish:'Lollipop',                          price:1,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'சாயிங் கம்',                     nameEnglish:'Chewing Gum',                       price:1,   unit:'பீஸ்',    isFavourite:false, image:null},
+      {id:uid(),nameTamil:'டாஃபி (பல வண்ணம்)',              nameEnglish:'Assorted Toffee',                   price:1,   unit:'பீஸ்',    isFavourite:false, image:null},
+    ];
   },
 
   addCustomer(name, phone, nameEnglish) {
@@ -1228,11 +1375,11 @@ function renderDashboard() {
     const c = DB.customers.find(x=>x.id===b.custId)||{name:'?'};
     return `<div class="row-item flex items-center gap-3 p-3 mb-2" onclick="openBillDetail('${b.id}','home')">
       <div class="avatar"><i class="ti ti-receipt text-xl text-green-700"></i></div>
-      <div style="flex:1">
-        <div class="font-bold text-base">${c.name}</div>
-        <div class="text-xs text-gray-400">${fmtTime(b.date)} · ${b.items.length} பொருட்கள்</div>
+      <div class="row-mid">
+        <span class="row-title font-bold text-base">${c.name}</span>
+        <span class="row-sub text-xs text-gray-400">${fmtTime(b.date)} · ${b.items.length} பொருட்கள்</span>
       </div>
-      <div class="text-right mr-1">
+      <div class="text-right mr-1" style="flex-shrink:0">
         <div class="font-black text-lg">${rupee(b.totalAmt)}</div>
         ${b.kadan>0?`<span class="badge-red">கடன் ${rupee(b.kadan)}</span>`:`<span class="badge-green">கட்டினார்</span>`}
       </div>
@@ -1262,11 +1409,11 @@ function renderCustomers() {
     const bills = DB.getCustBills(c.id).length;
     return `<div class="row-item flex items-center gap-3 p-3 mb-2" onclick="openCustomer('${c.id}')">
       <div class="avatar">${c.name.slice(0,2)}</div>
-      <div style="flex:1">
-        <div class="font-bold text-base">${c.name}${c.nameEnglish?` <span style="font-size:12px;color:#6b7280;font-weight:600">(${c.nameEnglish})</span>`:''}</div>
-        <div class="text-xs text-gray-400">${c.phone||'—'} · ${bills} பில்கள்</div>
+      <div class="row-mid">
+        <span class="row-title font-bold text-base">${c.name}${c.nameEnglish?` <span style="font-size:12px;color:#6b7280;font-weight:600">(${c.nameEnglish})</span>`:''}</span>
+        <span class="row-sub text-xs text-gray-400">${c.phone||'—'} · ${bills} பில்கள்</span>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="row-side">
         ${kadan>0?`<span class="badge-red">${rupee(kadan)}</span>`:`<span class="badge-green">சரி</span>`}
         <button onclick="event.stopPropagation();confirmDelete('வாடிக்கையாளரை நீக்கவா?','${escQ(c.name)} மற்றும் அனைத்து பில்களும் நீக்கப்படும்.',()=>deleteCustomer('${c.id}'))" class="del-btn">
           <i class="ti ti-trash"></i>
@@ -1476,11 +1623,11 @@ function renderKadan() {
     return `<div class="card mb-3 overflow-hidden">
       <div class="flex items-center gap-3 p-3 border-b border-gray-100">
         <div class="avatar">${c.name.slice(0,2)}</div>
-        <div style="flex:1" onclick="openCustomer('${c.id}')">
-          <div class="font-bold text-base">${c.name}</div>
-          <div class="text-xs text-gray-400">${c.phone||'—'} · ${bills.length} பில் நிலுவை</div>
+        <div class="row-mid" onclick="openCustomer('${c.id}')">
+          <span class="row-title font-bold text-base">${c.name}</span>
+          <span class="row-sub text-xs text-gray-400">${c.phone||'—'} · ${bills.length} பில் நிலுவை</span>
         </div>
-        <div class="text-right mr-2">
+        <div class="text-right mr-2" style="flex-shrink:0">
           <div class="font-black text-rose-600 text-xl">${rupee(k)}</div>
           <div class="text-xs text-gray-400">மொத்த கடன்</div>
         </div>
@@ -1553,11 +1700,11 @@ function renderCustomerDetail(id) {
   if (!bills.length) { el.innerHTML = emptyState('ti-receipt','பில் வரலாறு இல்லை',''); return; }
   el.innerHTML = bills.map(b=>`
     <div class="row-item flex items-center gap-3 p-3 mb-2" onclick="openBillDetail('${b.id}','customer')">
-      <div style="flex:1">
-        <div class="font-bold text-base">${fmtDate(b.date)} <span class="text-gray-400 font-normal text-xs">${fmtTime(b.date)}</span></div>
-        <div class="text-xs text-gray-400">${b.items.length} பொருட்கள் · ${b.items.map(i=>i.nameTamil).slice(0,2).join(', ')}${b.items.length>2?'...':''}</div>
+      <div class="row-mid">
+        <span class="row-title font-bold text-base">${fmtDate(b.date)} <span class="text-gray-400 font-normal text-xs">${fmtTime(b.date)}</span></span>
+        <span class="row-sub text-xs text-gray-400">${b.items.length} பொருட்கள் · ${b.items.map(i=>i.nameTamil).slice(0,2).join(', ')}${b.items.length>2?'...':''}</span>
       </div>
-      <div class="text-right mr-1">
+      <div class="text-right mr-1" style="flex-shrink:0">
         <div class="font-black text-lg">${rupee(b.totalAmt)}</div>
         ${b.kadan>0?`<span class="badge-red">கடன் ${rupee(b.kadan)}</span>`:`<span class="badge-green">கட்டினார்</span>`}
       </div>
@@ -1985,8 +2132,8 @@ function onBillCustSearch() {
     const k=DB.getCustKadan(c.id);
     return `<div class="suggest-item flex items-center gap-3 p-3 border-b border-gray-100 cursor-pointer" onclick="selectBillCustomer('${c.id}','${escQ(c.name)}')">
       <div class="avatar" style="width:40px;height:40px;font-size:13px">${c.name.slice(0,2)}</div>
-      <div style="flex:1"><div class="font-semibold text-base">${c.name}</div><div class="text-xs text-gray-400">${c.phone||'—'}</div></div>
-      ${k>0?`<span class="badge-red">${rupee(k)}</span>`:''}
+      <div class="row-mid"><span class="row-title font-semibold text-base">${c.name}</span><span class="row-sub text-xs text-gray-400">${c.phone||'—'}</span></div>
+      ${k>0?`<span class="badge-red" style="flex-shrink:0">${rupee(k)}</span>`:''}
     </div>`;
   }).join('')}</div>`;
 }
@@ -2381,6 +2528,25 @@ let pwaInstallPrompt = null;
 
 // Create inline manifest
 (function setupManifest() {
+  // Branded app icon: gradient backdrop + awning-stripe motif + "N" monogram + amber counter line
+  const iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">'
+    + '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
+    + '<stop offset="0" stop-color="#22c55e"/><stop offset="1" stop-color="#14532d"/>'
+    + '</linearGradient></defs>'
+    + '<rect width="512" height="512" rx="104" fill="url(#g)"/>'
+    + '<rect width="512" height="230" rx="104" fill="#ffffff" opacity="0.05"/>'
+    + '<g transform="translate(96,120)">'
+    + '<rect x="0" y="0" width="320" height="32" rx="8" fill="#ffffff" opacity="0.95"/>'
+    + '<rect x="0" y="0" width="40" height="32" fill="#f59e0b"/>'
+    + '<rect x="80" y="0" width="40" height="32" fill="#f59e0b"/>'
+    + '<rect x="160" y="0" width="40" height="32" fill="#f59e0b"/>'
+    + '<rect x="240" y="0" width="40" height="32" fill="#f59e0b"/>'
+    + '</g>'
+    + '<text x="256" y="372" font-family="Georgia, \'Times New Roman\', serif" font-size="220" font-weight="900" text-anchor="middle" fill="#ffffff">N</text>'
+    + '<rect x="116" y="392" width="280" height="10" rx="5" fill="#f59e0b"/>'
+    + '</svg>';
+  const iconDataUri = 'data:image/svg+xml,' + encodeURIComponent(iconSvg);
+
   const manifest = {
     name: 'Nithisha Store',
     short_name: 'NithishaStore',
@@ -2390,14 +2556,18 @@ let pwaInstallPrompt = null;
     background_color: '#f0fdf4',
     theme_color: '#15803d',
     icons: [
-      { src: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="#15803d"/><text x="96" y="130" font-size="100" text-anchor="middle" fill="white">🏪</text></svg>'), sizes: '192x192', type: 'image/svg+xml' },
-      { src: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="100" fill="#15803d"/><text x="256" y="340" font-size="280" text-anchor="middle" fill="white">🏪</text></svg>'), sizes: '512x512', type: 'image/svg+xml' }
+      { src: iconDataUri, sizes: '192x192', type: 'image/svg+xml' },
+      { src: iconDataUri, sizes: '512x512', type: 'image/svg+xml' }
     ]
   };
   const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const el = document.getElementById('pwa-manifest');
   if (el) el.href = url;
+  const fav = document.getElementById('pwa-favicon');
+  if (fav) fav.href = iconDataUri;
+  const apple = document.getElementById('pwa-apple-icon');
+  if (apple) apple.href = iconDataUri;
 })();
 
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -2564,11 +2734,11 @@ function renderCalcHistory() {
   }
   el.innerHTML = hist.map((h, idx) => `
     <div class="calc-history-row">
-      <div style="flex:1;cursor:pointer" onclick="calcFillFromHistory('${h.result}')">
-        <div class="calc-history-expr">${h.expr} =</div>
+      <div class="calc-history-info" style="cursor:pointer" onclick="calcFillFromHistory('${h.result}')">
+        <div class="calc-history-expr" title="${h.expr} =">${h.expr} =</div>
         <div class="text-xs text-gray-400">${fmtTime(h.time)}</div>
       </div>
-      <div class="calc-history-res mr-2">${h.result}</div>
+      <div class="calc-history-res">${h.result}</div>
       <button onclick="deleteCalcHistoryItem(${idx})" class="del-btn" style="width:32px;height:32px;flex-shrink:0">
         <i class="ti ti-trash" style="font-size:14px"></i>
       </button>
