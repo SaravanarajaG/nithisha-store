@@ -260,13 +260,35 @@ tailwind.config = {
   .calc-clear{background:#f3f4f6;color:#374151}
   .calc-zero{grid-column:span 2}
   .calc-history-row{background:white;border-radius:12px;border:1px solid #e5e7eb;
-    padding:10px 14px;margin-bottom:7px;display:flex;justify-content:space-between;
-    align-items:center;gap:10px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-  .calc-history-info{flex:1;min-width:0}
-  .calc-history-expr{font-size:13px;color:#6b7280;font-weight:600;white-space:nowrap;
-    overflow:hidden;text-overflow:ellipsis}
-  .calc-history-res{font-size:16px;font-weight:900;color:#166534;flex-shrink:0;
-    white-space:nowrap;text-align:right}
+    padding:10px 14px;margin-bottom:7px;cursor:pointer;
+    box-shadow:0 1px 4px rgba(0,0,0,.04)}
+  .calc-history-row:active{background:#f9fafb}
+  .calc-history-info{width:100%}
+  .calc-history-expr{font-size:14.5px;color:#374151;font-weight:700;white-space:normal;
+    word-break:break-word;line-height:1.5}
+  .calc-history-meta{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+  .calc-history-res{font-size:18px;font-weight:900;color:#166534;white-space:nowrap}
+
+  /* ── APP LOADER ── */
+  .app-loader{position:fixed;inset:0;z-index:9999;
+    background:linear-gradient(135deg,#15803d,#166534);
+    display:flex;align-items:center;justify-content:center;
+    transition:opacity .45s ease,visibility .45s ease}
+  .app-loader.hide{opacity:0;visibility:hidden;pointer-events:none}
+  .app-loader-logo{width:74px;height:74px;border-radius:22px;background:rgba(255,255,255,.18);
+    display:flex;align-items:center;justify-content:center;margin:0 auto 18px;
+    font-family:Georgia,'Times New Roman',serif;font-weight:900;color:#fff;font-size:36px;
+    box-shadow:0 10px 28px rgba(0,0,0,.25)}
+  .app-loader-spinner{width:38px;height:38px;border:4px solid rgba(255,255,255,.25);
+    border-top-color:#fff;border-radius:50%;margin:0 auto 16px;animation:app-spin .8s linear infinite}
+  @keyframes app-spin{to{transform:rotate(360deg)}}
+  .app-loader-text{font-weight:900;font-size:21px;color:#fff;letter-spacing:.3px;text-align:center}
+  .app-loader-sub{font-size:13px;color:rgba(255,255,255,.82);margin-top:5px;text-align:center}
+
+  /* ── DATA BACKUP ── */
+  .backup-status{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;
+    background:#f0fdf4;border:1px solid #bbf7d0;font-size:12.5px;color:#166534;font-weight:600;margin-bottom:10px}
+  .backup-status.warn{background:#fffbeb;border-color:#fde68a;color:#92400e}
 
   /* ── PRINT ── */
   @media print{
@@ -294,6 +316,16 @@ tailwind.config = {
 </style>
 </head>
 <body>
+
+<!-- APP LOADER (shown until the app is fully ready) -->
+<div id="app-loader" class="app-loader">
+  <div>
+    <div class="app-loader-logo">N</div>
+    <div class="app-loader-spinner"></div>
+    <div class="app-loader-text">Nithisha Store</div>
+    <div class="app-loader-sub">ஏற்றப்படுகிறது...</div>
+  </div>
+</div>
 
 <!-- PRINT AREA (hidden except @media print) -->
 <div id="print-area"></div>
@@ -346,6 +378,15 @@ tailwind.config = {
   </div>
 
   <div id="tab-dashboard" class="content-area px-3 pt-3">
+    <div id="backup-reminder-banner" class="hidden" style="background:linear-gradient(135deg,#15803d,#166534);border-radius:14px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 14px rgba(21,128,61,.25)">
+      <i class="ti ti-cloud-download text-2xl text-white flex-shrink-0"></i>
+      <div style="flex:1;min-width:0">
+        <div class="text-white font-bold text-sm">இன்றைய Backup எடுக்கப்படவில்லை</div>
+        <div class="text-green-100 text-xs">தரவை பாதுகாக்க ஒரு தடவை தட்டவும்</div>
+      </div>
+      <button onclick="exportBackupJson()" class="bg-white text-green-700 font-bold text-xs px-3 py-2 rounded-lg flex-shrink-0">இப்போது எடு</button>
+      <button onclick="dismissBackupBanner()" class="text-white/70 flex-shrink-0" style="font-size:18px;line-height:1;padding:4px"><i class="ti ti-x"></i></button>
+    </div>
     <div class="grid grid-cols-2 gap-3 mb-4" id="dash-stats"></div>
     <div class="slbl" style="margin-top:0">இன்றைய பில்கள்</div>
     <div id="today-bills-list"></div>
@@ -659,6 +700,27 @@ tailwind.config = {
           <div class="theme-swatch" id="theme-purple" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)" onclick="setTheme('purple','#7c3aed','#6d28d9')"></div>
           <div class="text-xs text-center mt-1 font-bold text-gray-500">ஊதா</div>
         </div>
+      </div>
+    </div>
+
+    <div class="slbl">தரவு காப்பு (Backup)</div>
+    <div class="card p-4 mb-3">
+      <div id="backup-status-box" class="backup-status">
+        <i class="ti ti-info-circle text-base"></i>
+        <span id="backup-status-text">தரவு நிலை சோதிக்கப்படுகிறது...</span>
+      </div>
+      <button id="link-folder-btn" onclick="linkStorageFolder()" class="btn btn-blue w-full mb-2" style="display:none">
+        <i class="ti ti-folder-plus text-xl"></i> "Nithisha Store" Folder-ல் இணை
+      </button>
+      <button onclick="exportBackupJson()" class="btn btn-green w-full mb-2">
+        <i class="ti ti-download text-xl"></i> இப்போதே Backup எடு
+      </button>
+      <button onclick="document.getElementById('restore-file-input').click()" class="btn btn-outline w-full">
+        <i class="ti ti-upload text-xl"></i> Backup-லிருந்து மீட்டமை
+      </button>
+      <input type="file" id="restore-file-input" accept="application/json" class="hidden" onchange="handleRestoreFile(event)"/>
+      <div class="text-xs text-gray-400 mt-2 leading-relaxed">
+        "Backup எடு" பொத்தானை அழுத்தினால் வாடிக்கையாளர்கள், பொருட்கள், பில்கள், கடன், கால்குலேட்டர் வரலாறு என அனைத்து தரவும் ஒரு JSON கோப்பாக உங்கள் போனின் <b>Downloads / File Manager</b> இல் "NithishaStore-Backup" எனும் பெயரில் சேமிக்கப்படும். அதை எப்போது வேண்டுமானாலும் "மீட்டமை" மூலம் திரும்பப் பெறலாம்.
       </div>
     </div>
 
@@ -1004,6 +1066,7 @@ const DB = {
     localStorage.setItem('ns_products',  JSON.stringify(this.products));
     localStorage.setItem('ns_bills',     JSON.stringify(this.bills));
     localStorage.setItem('ns_kadan_payments', JSON.stringify(this.kadanPayments));
+    syncFolderNow();
   },
 
   seedProducts() {
@@ -1260,6 +1323,209 @@ function loadSettingsPage() {
   if (sw) sw.classList.add('active');
 }
 
+// ══════════════════════════════════════════
+// "NITHISHA STORE" FOLDER LINK + BACKUP/RESTORE
+// ══════════════════════════════════════════
+// On phones where the browser allows it (mostly desktop Chrome/Edge today),
+// linkStorageFolder() lets the owner pick a location and we create/use a
+// real "Nithisha Store" folder there, then every DB.save() silently writes
+// a fresh NithishaStore-Data.json snapshot into it.
+// On phones where the browser does NOT support that (most Android Chrome
+// browsers right now), "Backup எடு" downloads the same data as a JSON file
+// into the phone's normal Downloads folder, viewable in any File Manager
+// app, and "மீட்டமை" loads it back in.
+const FSDB_NAME = 'ns_fs_handles', FSDB_STORE = 'handles';
+function fsdbOpen() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(FSDB_NAME, 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore(FSDB_STORE); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function fsdbSet(key, val) {
+  const db = await fsdbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(FSDB_STORE, 'readwrite');
+    tx.objectStore(FSDB_STORE).put(val, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function fsdbGet(key) {
+  const db = await fsdbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(FSDB_STORE, 'readonly');
+    const req = tx.objectStore(FSDB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+let nsFolderHandle = null;
+const nsFolderSupported = (typeof window.showDirectoryPicker === 'function');
+
+function getFullBackupObject() {
+  let calcHist = [];
+  try { calcHist = JSON.parse(localStorage.getItem('ns_calc_history') || '[]'); } catch(e) {}
+  return {
+    app: 'Nithisha Store',
+    exportedAt: Date.now(),
+    customers: DB.customers,
+    products: DB.products,
+    bills: DB.bills,
+    kadanPayments: DB.kadanPayments,
+    calcHistory: calcHist,
+    settings: appSettings
+  };
+}
+
+async function linkStorageFolder() {
+  if (!nsFolderSupported) {
+    showToast('இந்த Browser-ல் Folder இணைப்பு ஆதரிக்கப்படவில்லை. "Backup எடு" பயன்படுத்தவும்.', true);
+    return;
+  }
+  try {
+    const baseHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    const storeHandle = await baseHandle.getDirectoryHandle('Nithisha Store', { create: true });
+    nsFolderHandle = storeHandle;
+    await fsdbSet('dir', storeHandle);
+    await syncFolderNow();
+    updateBackupStatusUI();
+    showToast('"Nithisha Store" Folder இணைக்கப்பட்டது!');
+  } catch (err) {
+    if (err.name !== 'AbortError') showToast('Folder இணைக்க முடியவில்லை.', true);
+  }
+}
+
+async function verifyFolderPermission(handle) {
+  if (!handle) return false;
+  try {
+    const opts = { mode: 'readwrite' };
+    if ((await handle.queryPermission(opts)) === 'granted') return true;
+    if ((await handle.requestPermission(opts)) === 'granted') return true;
+  } catch(e) {}
+  return false;
+}
+
+async function syncFolderNow() {
+  if (!nsFolderSupported || !nsFolderHandle) return;
+  try {
+    const ok = await verifyFolderPermission(nsFolderHandle);
+    if (!ok) return;
+    const fileHandle = await nsFolderHandle.getFileHandle('NithishaStore-Data.json', { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(JSON.stringify(getFullBackupObject(), null, 2));
+    await writable.close();
+  } catch(e) { /* folder may have been moved/deleted - stay silent, app still works */ }
+}
+
+async function initFolderLink() {
+  if (nsFolderSupported) {
+    try {
+      const handle = await fsdbGet('dir');
+      if (handle) {
+        const perm = await handle.queryPermission({ mode: 'readwrite' });
+        nsFolderHandle = handle;
+        if (perm === 'granted') syncFolderNow();
+      }
+    } catch(e) {}
+  }
+  updateBackupStatusUI();
+}
+
+function updateBackupStatusUI() {
+  const btn = document.getElementById('link-folder-btn');
+  const box = document.getElementById('backup-status-box');
+  const txt = document.getElementById('backup-status-text');
+  if (!btn || !box || !txt) return;
+  if (nsFolderSupported) {
+    btn.style.display = '';
+    if (nsFolderHandle) {
+      box.classList.remove('warn');
+      txt.textContent = '"Nithisha Store" Folder இணைக்கப்பட்டுள்ளது — தரவு தானாக சேமிக்கப்படும்.';
+      btn.innerHTML = '<i class="ti ti-folder-check text-xl"></i> Folder மீண்டும் இணை';
+    } else {
+      box.classList.add('warn');
+      txt.textContent = 'இன்னும் Folder இணைக்கப்படவில்லை. கீழே இணைக்கவும்.';
+    }
+  } else {
+    box.classList.add('warn');
+    txt.textContent = 'இந்த Browser தானியங்கி Folder இணைப்பை ஆதரிக்காது. "Backup எடு" பொத்தானை பயன்படுத்தி உங்கள் தரவை File Manager-ல் பாதுகாக்கவும்.';
+    btn.style.display = 'none';
+  }
+}
+
+function todayStr() { return new Date().toLocaleDateString('en-CA'); } // YYYY-MM-DD, timezone-safe
+
+function exportBackupJson() {
+  const data = getFullBackupObject();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const dateStr = new Date().toLocaleDateString('en-IN').replace(/\//g,'-');
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `NithishaStore-Backup-${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  localStorage.setItem('ns_last_backup_date', todayStr());
+  hideBackupBanner();
+  showToast('Backup பதிவிறக்கப்படுகிறது... (Downloads/File Manager பாருங்கள்)');
+}
+
+function hideBackupBanner() {
+  const b = document.getElementById('backup-reminder-banner');
+  if (b) b.classList.add('hidden');
+}
+
+function dismissBackupBanner() {
+  // Snooze for today only - it will politely ask again tomorrow
+  localStorage.setItem('ns_last_backup_date', todayStr());
+  hideBackupBanner();
+}
+
+function checkDailyBackupReminder() {
+  const b = document.getElementById('backup-reminder-banner');
+  if (!b) return;
+  const last = localStorage.getItem('ns_last_backup_date');
+  // Only nag if there's actually something worth backing up
+  const hasData = (DB.customers.length || DB.bills.length || DB.products.length);
+  if (hasData && last !== todayStr()) b.classList.remove('hidden');
+  else b.classList.add('hidden');
+}
+
+function handleRestoreFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data || (!data.customers && !data.products && !data.bills)) {
+        showToast('இது சரியான Nithisha Store Backup கோப்பு இல்லை.', true);
+        return;
+      }
+      confirmDelete('தரவை மீட்டமைக்கவா?', 'இப்போதுள்ள தரவு மாற்றப்பட்டு, Backup கோப்பிலுள்ள தரவு ஏற்றப்படும்.', () => {
+        DB.customers = data.customers || [];
+        DB.products = data.products || [];
+        DB.bills = data.bills || [];
+        DB.kadanPayments = data.kadanPayments || [];
+        DB.save();
+        if (data.calcHistory) localStorage.setItem('ns_calc_history', JSON.stringify(data.calcHistory));
+        if (data.settings) { appSettings = { ...appSettings, ...data.settings }; localStorage.setItem('ns_settings', JSON.stringify(appSettings)); }
+        DB.load(); loadSettings(); renderDashboard(); renderCalcHistory();
+        showToast('தரவு மீட்டமைக்கப்பட்டது!');
+      });
+    } catch(err) {
+      showToast('கோப்பை படிக்க முடியவில்லை.', true);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
 function clearAllData() {
   confirmDelete('அனைத்தையும் நீக்கவா?', 'பில்கள், வாடிக்கையாளர்கள், பொருட்கள் எல்லாம் நீக்கப்படும்!', () => {
     localStorage.removeItem('ns_customers');
@@ -1288,6 +1554,22 @@ let inlineProdCallback = null; // callback after saving product from inline sear
 DB.load();
 loadSettings();
 renderDashboard();
+initFolderLink();
+hideAppLoaderWhenReady();
+
+function hideAppLoaderWhenReady() {
+  function hide() {
+    const el = document.getElementById('app-loader');
+    if (el) el.classList.add('hide');
+  }
+  if (document.readyState === 'complete') {
+    setTimeout(hide, 300);
+  } else {
+    window.addEventListener('load', () => setTimeout(hide, 300));
+  }
+  // Safety fallback so the loader never gets stuck on a slow connection
+  setTimeout(hide, 2500);
+}
 
 // ══════════════════════════════════════════
 // NAVIGATION
@@ -1340,6 +1622,7 @@ function prodThumbHtml(p, size=44, radius=10) {
 // DASHBOARD
 // ══════════════════════════════════════════
 function renderDashboard() {
+  checkDailyBackupReminder();
   const today = new Date(); today.setHours(0,0,0,0);
   const todayBills = DB.bills.filter(b=>b.date>=today.getTime());
   const todayRev = todayBills.reduce((s,b)=>s+b.paidAmt,0);
@@ -2707,6 +2990,7 @@ function saveCalcHistory(entry) {
   if (hist.length > 50) hist = hist.slice(0, 50);
   localStorage.setItem('ns_calc_history', JSON.stringify(hist));
   renderCalcHistory();
+  syncFolderNow();
 }
 
 function clearCalcHistory() {
@@ -2733,15 +3017,19 @@ function renderCalcHistory() {
     return;
   }
   el.innerHTML = hist.map((h, idx) => `
-    <div class="calc-history-row">
-      <div class="calc-history-info" style="cursor:pointer" onclick="calcFillFromHistory('${h.result}')">
-        <div class="calc-history-expr" title="${h.expr} =">${h.expr} =</div>
-        <div class="text-xs text-gray-400">${fmtTime(h.time)}</div>
+    <div class="calc-history-row" onclick="calcFillFromHistory('${h.result}')">
+      <div class="calc-history-info">
+        <div class="calc-history-expr">${h.expr} =</div>
       </div>
-      <div class="calc-history-res">${h.result}</div>
-      <button onclick="deleteCalcHistoryItem(${idx})" class="del-btn" style="width:32px;height:32px;flex-shrink:0">
-        <i class="ti ti-trash" style="font-size:14px"></i>
-      </button>
+      <div class="calc-history-meta">
+        <div class="text-xs text-gray-400">${fmtTime(h.time)}</div>
+        <div class="flex items-center gap-2">
+          <div class="calc-history-res">${h.result}</div>
+          <button onclick="event.stopPropagation();deleteCalcHistoryItem(${idx})" class="del-btn" style="width:32px;height:32px;flex-shrink:0">
+            <i class="ti ti-trash" style="font-size:14px"></i>
+          </button>
+        </div>
+      </div>
     </div>`).join('');
 }
 
